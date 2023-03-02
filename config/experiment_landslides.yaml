@@ -1,0 +1,49 @@
+defaults:
+  - models: deeplabv3plus.yaml
+  - datasets: segmentation_landslides
+  - optimizers: adam.yaml
+  - losses: segmentation_losses
+
+project: "segmentation"
+ckpt_path: /workspace/data/landslides/model-v59.ckpt
+task: image-segmentation
+
+accelerator: gpu
+gpus: [2]
+
+model: 
+    encoder_depth: 5
+    decoder_channels: 512
+    in_channels: 4
+    classes: 1
+
+
+datamodules: 
+    _target_: innofw.core.datamodules.lightning_datamodules.segmentation_dir.DicomDirSegmentationLightningDataModule
+    img_path: /workspace/data/landslides
+    
+    label_path: /workspace/data/landslides
+    dst_path: /workspace/data/infer
+    num_workers: 16
+
+
+preprocessing: None
+augmentations: {}
+batch_size: 1
+
+extension: ".tif"
+label: "100"
+channels: 
+  - "RED"
+  - "GRN"
+  - "BLU" 
+  # jp2
+
+
+tile_size: 2048
+tile_step: 1024
+threshold: 0.5
+
+
+
+
