@@ -48,6 +48,9 @@ class HDF5LightningDataModule(BaseLightningDataModule):
             num_workers: int = 1,
             random_seed: int = 42,
             stage=None,
+            tile_size: int = 512,
+            tile_step: int = 512,
+            threshold: float = 0.5,
             *args,
             **kwargs,
     ):
@@ -66,6 +69,9 @@ class HDF5LightningDataModule(BaseLightningDataModule):
         self.channels_num = channels_num
         self.val_size = val_size
         self.random_seed = random_seed
+        self.tile_size = tile_size
+        self.tile_step = tile_step
+        self.threshold = threshold
 
     def find_hdf5(self, path):
         paths = []
@@ -97,15 +103,25 @@ class HDF5LightningDataModule(BaseLightningDataModule):
         if isinstance(self.predict_dataset, HDF5Dataset):
             return
         infer_files = self.find_hdf5(self.predict_dataset)
-        self.predict_dataset = HDF5Dataset(infer_files, self.channels_num, self.aug['test'])
-
+        if self.predict_dataset_type == 'hdf5':
+            self.predict_dataset = HDF5Dataset(infer_files, self.channels_num, self.aug['test'])
+        else:
+            self.predict_dataset = TileDataset(infer_files, 
+                                               self.channels_num, 
+                                               self.aug['test'],
+                                               threshold=self.threshold,
+                                               tile_size=self.tile_size,
+                                               tile_step=self.tile_step
+                                               )
+        
+ # нужно ли поменять threshold?
     def save_preds(self, preds, stage: Stages, dst_path: pathlib.Path):
         out_file_path = dst_path / "results"
         os.mkdir(out_file_path)
         for preds_batch in preds:
             for i , pred in enumerate(preds_batch):
                 pred = pred.numpy()
-                pred[pred < 0.3] = 0
+                pred[pred < self.threshold] = 0
                 pred[pred > 0] = 255
                 filename = out_file_path / f"out_{i}.png"
                 cv2.imwrite(filename, pred[0])

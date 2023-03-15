@@ -1,30 +1,60 @@
 defaults:
   - models: deeplabv3plus.yaml
-  - datasets: segmentation_landslides
+  # - datasets: segmentation_landslides
   - optimizers: adam.yaml
   - losses: segmentation_losses
 
+datasets:
+  # with_tta: False
+  # with_padding: False
+  tile_size: 512
+  tile_step: 512
+  threshold: 0.5
+
+  task: image-segmentation
+  val_size: 0.2
+  channels_num: 4
+
+  name: landslides
+  description: some
+  markup_info: some
+  date_time: 13.03.2023
+
+  train:
+    source: /workspace/dolg/data/train_samples/hdf5/512/train_samples_fix.hdf5
+  # target: ./data/arable/train/
+
+  test:
+    source: /workspace/dolg/data/train_samples/hdf5/512/val_samples_fix.hdf5
+    # target: ./data/arable/test/
+
+  infer:
+    source: /workspace/dolg/data/train_samples/hdf5/512/val_samples_fix.hdf5
+    # target: ./data/arable/infer/
+
 project: "segmentation"
 ckpt_path: /workspace/data/landslides/model-v59.ckpt
-task: image-segmentation
+
 
 accelerator: gpu
 gpus: [2]
 
 model: 
-    encoder_depth: 5
-    decoder_channels: 512
-    in_channels: 4
-    classes: 1
+  - encoder_depth: 5
+  - decoder_channels: 512
+  - in_channels: 4
+  - classes: 1
 
 
 datamodules: 
-    _target_: innofw.core.datamodules.lightning_datamodules.segmentation_dir.DicomDirSegmentationLightningDataModule
+    _target_: innofw.core.datamodules.lightning_datamodules.segmentation_hdf5_dm.HDF5LightningDataModule
     img_path: /workspace/data/landslides
     
     label_path: /workspace/data/landslides
     dst_path: /workspace/data/infer
     num_workers: 16
+
+
 
 
 preprocessing: None
@@ -40,9 +70,6 @@ channels:
   # jp2
 
 
-tile_size: 2048
-tile_step: 1024
-threshold: 0.5
 
 
 

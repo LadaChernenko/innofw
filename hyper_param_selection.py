@@ -24,7 +24,7 @@ import albumentations as A
 from pydantic import validate_arguments
 from torchmetrics import JaccardIndex, F1Score
 import pandas as pd
-
+from pytorch_lightning import Trainer
 # from segmentation.models.segmentation import SeparatedBoundariesModel
 # from operations.vectorize import raster_array_to_shp
 # from segmentation.models.segmentation import SegmentationLM
@@ -186,6 +186,7 @@ def grid_parameters(parameters):
         yield dict(zip(parameters.keys(), params))
 
 
+
 def sort_result(df):
     print('Params for the best iou:')
     print(df.sort_values('iou', ascending=False).head(2))
@@ -198,9 +199,12 @@ def main(cfg):
     
     # model = hydra.utils.instantiate(cfg.model)
     trainer_cfg = get_trainer_cfg(cfg)
+    trainer = Trainer()
     task = cfg.get("task")
     model = get_model(cfg.models, trainer_cfg)
 
+    trainer = Trainer(trainer_cfg)
+    
     model_lm = SemanticSegmentationLightningModule.load_from_checkpoint(
         cfg.ckpt_path, model=model, optimizer_cfg=cfg.optimizers, losses=cfg.losses, scheduler_cfg=None
     )
@@ -213,7 +217,8 @@ def main(cfg):
 
     device = torch.device("cuda:0")
 
-
+    safe_path = cfg.datamodules.dst_path
+    # print(safe_path)
 
 
     iou_score = JaccardIndex(task="binary", num_classes=1)
@@ -230,33 +235,55 @@ def main(cfg):
         "save_geom": [False],
         "display": [False],
     }
+    cfg_datamodule = cfg.get("datasets")
+    print(cfg_datamodule)
 
     framework = map_model_to_framework(model)
-    augmentations = get_obj(cfg, "augmentations", task, framework)
-    datamodule = get_datamodule(
-        cfg.datasets,
-        framework,
-        task=task,
-        stage=data_stage,
-        augmentations=augmentations,
-        batch_size=cfg.get("batch_size"),
-    )
+    print(framework)
+    
+    for settings in grid_parameters(parameters):
+        # cfg_datamodule["with_tta"] = settings["with_tta"]
+        # cfg_datamodule["with_padding"] = settings["with_padding"]
+        print(settings["threshold"])
+        cfg_datamodule["tile_size"] = settings["tile_size"]
+        cfg_datamodule["tile_step"] = settings["tile_step"]
+        # cfg_datamodule["threshold"] = settings["threshold"]
+
+        
+        datamodule = get_datamodule(cfg_datamodule, 
+                                    framework, 
+                                    task=task, 
+                                    # batch_size=cfg.get("batch_size")
+                                    )
+        trainer.predict(model, datamodule)
+        datamodule.save_preds(save_path)
+
+    # framework = map_model_to_framework(model)
+    # augmentations = get_obj(cfg, "augmentations", task, framework)
+    # datamodule = get_datamodule(
+    #     cfg.datasets,
+    #     framework,
+    #     task=task,
+    #     stage=data_stage,
+    #     augmentations=augmentations,
+    #     batch_size=cfg.get("batch_size"),
+    # )
     # data_path = cfg.datamodules.img_path
     # folders = list(Path(data_path).iterdir())
     # dst_path = Path(cfg.datamodules.dst_path)
     # dst_path.mkdir(exist_ok=True, parents=True)
     # df = pd.DataFrame()
 
-    callbacks = get_callbacks(
-        cfg, task, framework, metrics=metrics, losses=losses, datamodule=datamodule
-    )
-    # create logger with 'spam_application'
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
-    # create file handler which logs even debug messages
-    fh = logging.FileHandler("inference.log")
-    fh.setLevel(logging.DEBUG)
-    logger.addHandler(fh)
+    # callbacks = get_callbacks(
+    #     cfg, task, framework, metrics=metrics, losses=losses, datamodule=datamodule
+    # )
+    # # create logger with 'spam_application'
+    # logger = logging.getLogger(__name__)
+    # logger.setLevel(logging.DEBUG)
+    # # create file handler which logs even debug messages
+    # fh = logging.FileHandler("inference.log")
+    # fh.setLevel(logging.DEBUG)
+    # logger.addHandler(fh)
 
     """qb notes:
         код должен будет вызываться следующим образом:
@@ -272,7 +299,8 @@ def main(cfg):
             # ...
 
             datamodule = get_datamodule(cfg_datamodule)
-            trainer.predict(model, datamodule)  # вот здесь тренер использует у датамодуля predict_dataloader(), а у модели вызывает model.predic_step()
+            trainer.predict(model, datamodule)  # вот здесь тренер использует у датамодуля predict_dataloader(), 
+            а у модели вызывает model.predic_step()
             # получается ты эти две функции реализуешь. (код отправил в тг.)
             datamodule.save_preds(save_path)  # generate folder_name from settings
 
@@ -284,10 +312,10 @@ def main(cfg):
 
 
     # # for data_path, mask_path in zip(files, mask_files):
-    for folder in tqdm(random.sample(folders, 10)):
-        for settings in grid_parameters(parameters):
-            try:
-                logger.debug(f"{folder.name} - {settings}")
+    # for folder in tqdm(random.sample(folders, 10)):
+    #     for settings in grid_parameters(parameters):
+    #         try:
+    #             logger.debug(f"{folder.name} - {settings}")
     #             data_path = folder / f"{folder.name}.tif"
     #             mask_path = folder / f"{cfg.label}.tif"
     #             pred_path = infer(

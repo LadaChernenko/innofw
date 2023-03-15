@@ -148,3 +148,12 @@ class SemanticSegmentationLightningModule(BaseLightningModule):
 
     def model_load_checkpoint(self, path):
         self.model.load_state_dict(torch.load(path)["state_dict"])
+
+    def predict_step(self, batch: Any, batch_idx: int, dataloader_idx: Optional[int] = None) -> Any:
+        tile, coords = batch[SegDataKeys.image], batch[SegDataKeys.coords]
+    
+        prediction = self.forward(tile)
+        if dataloader_idx is None:
+            self.trainer.predict_dataloaders[0].dataset.add_prediction(prediction, coords, batch_idx)
+        else:
+            self.trainer.predict_dataloaders[dataloader_idx].dataset.add_prediction(prediction, coords, batch_idx)
