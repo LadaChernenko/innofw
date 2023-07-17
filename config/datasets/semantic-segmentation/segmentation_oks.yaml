@@ -1,0 +1,24 @@
+task:
+  - image-segmentation
+
+name: test dataset oks
+description: dataset for running training in hdf5 format
+markup_info: Информация о разметке
+date_time: 12.07.2023
+
+
+train:
+  source: /mnt/datastore/GIS/ROKS/Rosreestr/OKS/data/preprocessed-27-09/9_GSKN-39-3-148-j_train.hdf5
+  # target: ./data/arable/train/
+
+test:
+  source: /mnt/datastore/GIS/ROKS/Rosreestr/OKS/data/preprocessed-27-09/6_GSKN-39-3-114-j_train.hdf5
+  # target: ./data/arable/test/
+
+infer:
+  source: /mnt/datastore/GIS/ROKS/Rosreestr/OKS/data/preprocessed-27-09/7_GSKN-39-3-114-z_train.hdf5
+  # target: ./data/arable/infer/
+
+val_size: 0.2
+channels_num: 3
+

@@ -19,7 +19,7 @@ from innofw.core.datamodules.lightning_datamodules.base import (
     BaseLightningDataModule,
 )
 
-datasets.disable_caching()
+#datasets.disable_caching()
 
 
 class DrugprotDataModule(BaseLightningDataModule):

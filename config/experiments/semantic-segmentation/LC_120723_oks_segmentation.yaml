@@ -1,0 +1,34 @@
+# @package _global_
+defaults:
+  - override /models: semantic-segmentation/unet
+  - override /datasets: semantic-segmentation/segmentation_oks.yaml
+  - override /augmentations_train: none
+  - override /optimizers: adam.yaml
+  - override /augmentations_train: linear-roads-bin-seg
+  - override /augmentations_val: linear-roads-bin-seg  # none
+  - override /augmentations_test: none
+  - override /losses: semantic-segmentation/dice.yaml  # semantic-segmentation/triple_loss_old_pipe.yaml  # segmentation_losses.yaml
+  - override /callbacks: segmentation
+  - override /loggers: wandb
+
+
+#models:
+#  num_channels: 3
+#  num_labels: 1
+
+project: "oks_segmentation"
+task: "image-segmentation"
+random_seed: 42
+stop_param: 3
+epochs: 3
+weights_freq: 1
+batch_size: 8
+accelerator: gpu #cpu 
+#override hydra/job_logging: stdout
+
+wandb:
+ enable: True
+ project: "oks_segmentation"
+#  entity: "k-galliamov"
+ job_type: training
+
